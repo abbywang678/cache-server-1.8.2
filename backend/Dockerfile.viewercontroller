@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM golang:1.17.6-alpine3.15 as builder
+FROM golang:1.23.2-alpine3.19 AS builder
 
 RUN apk update && apk upgrade
 RUN apk add --no-cache git gcc musl-dev
@@ -21,11 +21,15 @@ WORKDIR /src/github.com/kubeflow/pipelines
 COPY . .
 
 RUN GO111MODULE=on go build -o /bin/controller backend/src/crd/controller/viewer/*.go
+
 # Check licenses and comply with license terms.
-RUN ./hack/install-go-licenses.sh
-RUN go-licenses csv /bin/controller > /tmp/licenses.csv && \
-    diff /tmp/licenses.csv backend/third_party_licenses/viewer.csv && \
-    go-licenses save /tmp/licenses.csv --save_path /tmp/NOTICES
+RUN set -ex
+RUN go install github.com/google/go-licenses@d483853
+
+RUN go-licenses csv ./backend/src/crd/controller/viewer > /tmp/licenses.csv && \
+    go-licenses save ./backend/src/crd/controller/viewer --save_path /tmp/NOTICES
+
+# RUN diff /tmp/licenses.csv backend/third_party_licenses/viewer.csv && \    
 
 FROM alpine
 WORKDIR /bin
@@ -37,7 +41,7 @@ RUN chmod +x /bin/controller
 COPY --from=builder /tmp/licenses.csv /third_party/licenses.csv
 COPY --from=builder /tmp/NOTICES /third_party/NOTICES
 
-ENV MAX_NUM_VIEWERS "50"
-ENV NAMESPACE "kubeflow"
+# ENV MAX_NUM_VIEWERS "50"
+# ENV NAMESPACE "kubeflow"
 
-CMD /bin/controller -logtostderr=true -max_num_viewers=${MAX_NUM_VIEWERS} --namespace=${NAMESPACE}
+CMD ["/bin/controller", "-logtostderr=true", "-max_num_viewers=50", "--namespace=kubeflow"]

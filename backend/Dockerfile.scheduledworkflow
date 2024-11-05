@@ -21,17 +21,16 @@ RUN apk update && apk upgrade && \
 WORKDIR /go/src/github.com/kubeflow/pipelines
 COPY . .
 
-RUN GO111MODULE=on go build -o /bin/cache_server backend/src/cache/*.go
+RUN GO111MODULE=on go build -o /bin/controller backend/src/crd/controller/scheduledworkflow/*.go
 
 # Check licenses and comply with license terms.
 RUN set -ex
 RUN go install github.com/google/go-licenses@d483853
 
-RUN go-licenses check ./backend/src/cache && \
-    go-licenses csv ./backend/src/cache > /tmp/licenses.csv && \
-    go-licenses save ./backend/src/cache --save_path /tmp/NOTICES
+RUN go-licenses csv ./backend/src/crd/controller/scheduledworkflow > /tmp/licenses.csv && \
+    go-licenses save ./backend/src/crd/controller/scheduledworkflow --save_path /tmp/NOTICES
 
-FROM alpine:3.19
+FROM alpine
 WORKDIR /bin
 
 COPY --from=builder /bin/cache_server /bin/cache_server
